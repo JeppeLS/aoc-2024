@@ -1,4 +1,4 @@
-use std::{fs, iter::zip};
+use std::{collections::HashMap, fs, iter::zip};
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Input file not found");
@@ -15,10 +15,27 @@ fn main() {
     list_a.sort();
     list_b.sort();
 
-    println!("{:?}", list_a);
+    let distance_sum = calc_pairwise_dict_sum(&list_a, &list_b);
+    println!("The distance sum is {}", distance_sum);
 
-    let distance_sum =
-        zip(list_a, list_b).fold(0, |sum, (first, second)| sum + (first - second).abs());
+    let similarity_score = calc_similarity_score(&list_a, &list_b);
+    println!("The similarity score is {}", similarity_score)
+}
 
-    println!("The answer is {}", distance_sum)
+fn calc_pairwise_dict_sum(list_a: &[i64], list_b: &[i64]) -> i64 {
+    return zip(list_a, list_b).fold(0, |sum, (first, second)| sum + (first - second).abs());
+}
+
+fn calc_similarity_score(list_a: &[i64], list_b: &[i64]) -> i64 {
+    let occurences = list_b.into_iter().fold(HashMap::new(), |mut map, number| {
+        let entry = map.entry(number).or_insert(0);
+        *entry += 1;
+        map
+    });
+
+    return list_a.into_iter().fold(0, |sum, number| {
+        let score = occurences.get(number).unwrap_or(&0);
+
+        sum + score * number
+    });
 }
