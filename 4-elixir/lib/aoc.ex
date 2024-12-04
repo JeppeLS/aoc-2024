@@ -10,9 +10,11 @@ defmodule Aoc do
   def start(_type, _args) do
     input = File.read!("input.txt")
 
-    matches = Aoc.count_matches(input)
+    xmas_matches = Aoc.count_xmas_matches(input)
+    cross_matches = Aoc.count_cross_mas_matches(input)
 
-    IO.puts("There are #{matches} matches")
+    IO.puts("There are #{xmas_matches} matches")
+    IO.puts("There are #{cross_matches} cross matches")
 
     {:ok, self()}
   end
@@ -24,11 +26,11 @@ defmodule Aoc do
 
   ## Examples
 
-      iex> Aoc.count_matches("XMAS")
+      iex> Aoc.count_xmas_matches("XMAS")
       1
 
   """
-  def count_matches(string) do
+  def count_xmas_matches(string) do
     lines =
       string
       |> String.split("\n", trim: true)
@@ -84,5 +86,38 @@ defmodule Aoc do
       end)
 
     horizontal_matches + non_horizontal_matches
+  end
+
+  @doc """
+  Count the number of MAS appearing in a cross shape
+  """
+  def count_cross_mas_matches(string) do
+    string
+    |> String.split("\n", trim: true)
+    |> Enum.chunk_every(3, 1, :discard)
+    |> Enum.reduce(0, fn [a, b, c], acc ->
+      matches =
+        0..(String.length(a) - 3)
+        |> Enum.reduce(0, fn index, acc ->
+          diagonal1 =
+            [a, b, c]
+            |> Enum.with_index()
+            |> Enum.map(fn {str, n} -> String.at(str, index + n) end)
+            |> Enum.join()
+
+          diagonal2 =
+            [a, b, c]
+            |> Enum.with_index()
+            |> Enum.map(fn {str, n} -> String.at(str, index + 2 - n) end)
+            |> Enum.join()
+
+          case {diagonal1, diagonal2} do
+            {d1, d2} when d1 in ["MAS", "SAM"] and d2 in ["MAS", "SAM"] -> acc + 1
+            _ -> acc
+          end
+        end)
+
+      acc + matches
+    end)
   end
 end
