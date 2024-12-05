@@ -4,7 +4,8 @@ val input = File("input.txt")
 val rules = HashMap<Int, MutableSet<Int>>()
 
 var isRule = true
-var res = 0
+var validRes = 0
+var invalidRes = 0
 for (line in input.readLines()) {
     if (line == "") {
         isRule = false
@@ -19,28 +20,47 @@ for (line in input.readLines()) {
     }
 
     val update = line.split(",").map { it.toInt() }
-    if (!isValid(update, rules)) {
-        continue
+
+    val reordered = reorder(update, rules)
+
+    val middle = reordered[reordered.size / 2]
+
+    if (update == reordered) {
+        validRes += middle
+    } else {
+        invalidRes += middle
     }
-    val middle = update[update.size / 2]
-    res += middle
 }
 
-println(res)
+println(validRes)
+println(invalidRes)
 
-fun isValid(update: List<Int>, rules: Map<Int, Set<Int>>): Boolean {
-    val before = ArrayList<Int>()
-    for (page in update) {
+fun reorder(update: List<Int>, rules: Map<Int, Set<Int>>): List<Int> {
+    for ((currentIdx, page) in update.withIndex()) {
         val rule = rules[page]
         if (rule == null) {
-            before.add(page)
             continue
         }
 
-        if (before.any { it in rule} ) {
-            return false
+        for ((idx, value) in update.subList(0, currentIdx).withIndex() ) {
+            if (value !in rule) {
+                continue
+            }
+            val swapped = update.swapIndices(idx, currentIdx)
+            return reorder(swapped, rules)
         }
-        before.add(page)
     }
-    return true
+    return update
+}
+
+fun <T> List<T>.swapIndices(index1: Int, index2: Int): List<T> {
+    if (index1 == index2) return this
+    if (index1 !in indices || index2 !in indices) {
+        throw IndexOutOfBoundsException("Invalid indices: $index1, $index2")
+    }
+
+    val mutableList = this.toMutableList()
+    mutableList[index1] = this[index2]
+    mutableList[index2] = this[index1]
+    return mutableList
 }
