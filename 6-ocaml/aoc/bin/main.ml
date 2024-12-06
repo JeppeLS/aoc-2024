@@ -1,10 +1,32 @@
-module StringMap = Map.Make(String)
-module Visited = Set.Make(struct
+type direction = Up | Down | Left | Right
+
+module CoordPair = struct
     type t = int * int
     let compare = compare
-end)
+end
 
-type direction = Up | Down | Left | Right
+module VisitedTuple = struct
+    type t = int * int * direction
+    let compare = compare
+end
+module VisitedSet = Set.Make(VisitedTuple)
+
+module CoordSet = Set.Make(CoordPair)
+
+type solution =
+    | Escaped of (int * int) list
+    | Looped of (int * int) list
+
+let visited_set_to_list s =
+    VisitedSet.to_list s
+    |> List.map (fun (i, j, _) -> (i, j))
+    |> CoordSet.of_list
+    |> CoordSet.to_list
+
+let add_to_map map i j =
+    let row = List.nth map i in
+    let new_row = List.mapi (fun col c -> if col = j then '#' else c) row in
+    List.mapi (fun row_index r -> if row_index = i then new_row else r) map
 
 let read_text_from_file filename =
   try
@@ -32,7 +54,7 @@ let rec step = fun i j visited map direction height width ->
             Some (List.nth row j)
     in
 
-    match next_char with
+    let next_visited = match next_char with
     | Some '#' ->
         let new_direction = match direction with
         | Up -> Right
@@ -40,11 +62,18 @@ let rec step = fun i j visited map direction height width ->
         | Left -> Up
         | Right -> Down
         in
-        step i j visited map new_direction height width
+            Some(i, j, new_direction)
     | Some _ ->
-        let new_visited = Visited.add (next_i, next_j) visited in
-        step next_i next_j new_visited map direction height width
-    | None -> visited
+            Some(next_i, next_j, direction)
+    | None -> None
+    in
+
+    match next_visited with
+    | Some(i, j, direction) when VisitedSet.mem (i, j, direction) visited -> Looped (visited_set_to_list visited)
+    | Some(i, j, direction) ->
+        let new_visited = VisitedSet.add (i, j, direction) visited in
+        step i j new_visited map direction height width
+    | None -> Escaped (visited_set_to_list visited)
 
 let rec find_start_col row j =
     match row with
@@ -69,17 +98,37 @@ let find_start lines =
     | None -> failwith "No start found"
 
 let () =
-    let lines = read_text_from_file "input.txt"
+    let map = read_text_from_file "input.txt"
     |> String.split_on_char '\n'
     |> List.filter (fun s -> String.length s > 0)
     |> List.map string_to_char_list in
 
-    let (i, j, direction) = find_start lines in
-    let initial_visited = Visited.singleton (i, j) in
+    let (start_row, start_col, direction) = find_start map in
+    let initial_visited = VisitedSet.singleton (start_row, start_col, direction) in
 
-    let height = List.length lines in
-    let width = List.length (List.hd lines) in
+    let height = List.length map in
+    let width = List.length (List.hd map) in
 
-    let visited = step i j initial_visited lines direction height width in
+    let visited = match step start_row start_col initial_visited map direction height width with
+        | Escaped path -> path
+        | Looped _ -> failwith "Original input looped" in
 
-    print_endline (string_of_int (Visited.cardinal visited));
+    print_endline "Part 1: ";
+    print_int (List.length visited);
+    print_newline ();
+
+    let res = visited
+        |> List.map (fun (i, j) -> add_to_map map i j)
+        |> List.map (fun map -> step start_row start_col initial_visited map direction height width)
+        |> List.fold_left (fun acc x ->
+            match x with
+            | Escaped _ -> acc
+            | Looped _ ->
+                    acc + 1
+            ) 0
+    in
+
+    print_endline "Part 2: ";
+    print_int res;
+    print_newline ()
+
