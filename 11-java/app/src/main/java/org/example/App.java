@@ -3,44 +3,41 @@ package org.example;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 
 public class App {
     public void solve(String input) {
-        ArrayList<Long> stones = new ArrayList<>();
-        for (String stone : input.split(" ")) {
-            stones.add(Long.parseLong(stone.strip()));
+        long partOne = 0L;
+        for (String stoneString : input.split(" ")) {
+            Long stone = Long.parseLong(stoneString.strip());
+
+            partOne += blink(stone, 25);
         }
 
-        for (int i = 0; i < 25; i++) {
-            stones = blink(stones);
-        }
-
-        System.out.println(stones.size());
+        System.out.println(partOne);
     }
 
-    private ArrayList<Long> blink(ArrayList<Long> stones) {
-        ArrayList<Long> res = new ArrayList<>();
-        for (Long stone : stones) {
-            if (stone == 0) {
-                res.add(1L);
-                continue;
-            }
-
-            String asString = stone.toString();
-            int length = asString.length();
-            if (length % 2 == 0) {
-                int half = length / 2;
-                long first = Long.parseLong(asString.substring(0, half));
-                long second = Long.parseLong(asString.substring(half, length));
-                res.add(first);
-                res.add(second);
-                continue;
-            }
-
-            res.add(stone * 2024);
+    private Long blink(Long stone, int amount) {
+        if (amount == 0) {
+            return 1L;
         }
-        return res;
+        if (stone == 0) {
+            return blink(1L, amount - 1);
+        }
+
+        String asString = stone.toString();
+        int length = asString.length();
+        if (length % 2 == 0) {
+            int half = length / 2;
+            long first = Long.parseLong(asString.substring(0, half));
+            long res1 = blink(first, amount - 1);
+
+            long second = Long.parseLong(asString.substring(half, length));
+            long res2 = blink(second, amount - 1);
+
+            return res1 + res2;
+        }
+
+        return blink(stone * 2024, amount - 1);
     }
 
     public static void main(String[] args) throws IOException {
