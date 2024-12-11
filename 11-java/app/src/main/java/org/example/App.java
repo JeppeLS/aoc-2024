@@ -24,14 +24,14 @@ public class App {
             return blink(1L, amount - 1);
         }
 
-        String asString = stone.toString();
-        int length = asString.length();
-        if (length % 2 == 0) {
-            int half = length / 2;
-            long first = Long.parseLong(asString.substring(0, half));
+        int digets = (int) Math.ceil(Math.log10(stone + 1));
+        if (digets % 2 == 0) {
+            int half = digets / 2;
+            long half10 = ((long) Math.pow(10, half));
+            long first = stone / half10;
             long res1 = blink(first, amount - 1);
 
-            long second = Long.parseLong(asString.substring(half, length));
+            long second = stone % half10;
             long res2 = blink(second, amount - 1);
 
             return res1 + res2;
