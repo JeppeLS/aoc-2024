@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #define MAX_LINES 500
 #define VALUES_PER_LINE 4
@@ -70,12 +71,83 @@ int main() {
         } else if (endRow > middleRow && endCol > middleCol) {
             q4++;
         }
-
     }
 
     int result = q1 * q2 * q3 * q4;
 
     printf("Result: %d\n", result);
 
-    return EXIT_SUCCESS;
+    int positions[lineCount][2];
+    for (int i=0; i < lineCount; i++) {
+        positions[i][0] = robots[i][1];
+        positions[i][1] = robots[i][0];
+    }
+    bool map[height][width];
+
+    for (int seconds=1; seconds < 100000; seconds++) {
+        // Reset the map
+        for (int h=0; h < height; h++) {
+            for (int w=0; w < width; w++) {
+                map[h][w] = false;
+            }
+        }
+
+        // Move the robots
+        bool collided = false;
+        for (int i=0; i < lineCount; i++) {
+            int *robot = robots[i];
+            int *position = positions[i];
+            int row = position[0];
+            int col = position[1];
+            int colSpeed = robot[2];
+            int rowSpeed = robot[3];
+
+            int endRow = (row + rowSpeed) % height;
+            if (endRow < 0) {
+                endRow += height;
+            }
+            int endCol = (col + colSpeed) % width;
+            if (endCol < 0) {
+                endCol += width;
+            }
+
+            positions[i][0] = endRow;
+            positions[i][1] = endCol;
+
+            if (map[endRow][endCol]) {
+                collided = true;
+            }
+            map[endRow][endCol] = true;
+        }
+
+        if (!collided) {
+            printf("Unique positions for everyone\n");
+
+            // Print the map
+            for (int w=-1; w < width; w++) {
+                if (w == -1) {
+                    printf("   ");
+                } else {
+                    printf("%d ", w / 10);
+                }
+            }
+            printf("\n");
+            for (int h=0; h < height; h++) {
+                printf("%02d ", h);
+                for (int w=0; w < width; w++) {
+                    if (h == 0) {
+                    }
+                    if (map[h][w]) {
+                        printf(" #");
+                    } else {
+                        printf(" .");
+                    }
+                }
+                printf("\n");
+            }
+            printf("Seconds: %d\n", seconds);
+            printf("Press Enter to continue...");
+            getchar();
+        }
+    }
 }
