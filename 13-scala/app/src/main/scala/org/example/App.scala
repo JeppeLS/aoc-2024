@@ -11,15 +11,21 @@ object App {
       .split("\n\n")
       .map(parseMachine)
 
-    val result = machines.map(solve).fold(0)((a, b) => a + b)
+    val part1 = machines.map(solve).fold(0L)((a, b) => a + b)
 
-    println(result)
+    val part2 = machines
+      .map(fixPrice)
+      .map(solveMachineAlgebrachically)
+      .fold(0L)((a, b) => a + b)
+
+    println("Part 1: " + part1)
+    println("Part 2: " + part2)
   }
 
-  def solve(machine: Machine): Int = {
-    var best: Integer = null
-    for (a <- 0 to 100) {
-      for (b <- 0 to 100) {
+  def solve(machine: Machine): Long = {
+    var best: java.lang.Long = null
+    for (a <- 0L to 100L) {
+      for (b <- 0L to 100L) {
         val x = machine.a.x * a + b * machine.b.x
         val y = machine.a.y * a + b * machine.b.y
         val isSolution = x == machine.prize.x && y == machine.prize.y
@@ -37,6 +43,35 @@ object App {
     } else {
       return best
     }
+  }
+
+  def solveMachineAlgebrachically(machine: Machine): Long = {
+    val b_num = machine.prize.x * machine.a.y - machine.a.x * machine.prize.y
+    val b_denom = machine.b.x * machine.a.y - machine.a.x * machine.b.y
+    if (b_num % b_denom != 0) {
+      return 0
+    }
+    val b = b_num / b_denom
+
+    val a_num = machine.prize.y - machine.b.y * b
+    val a_denom = machine.a.y
+    if (a_num % a_denom != 0) {
+      return 0
+    }
+    val a = a_num / a_denom
+
+    return 3 * a + b
+  }
+
+  def fixPrice(machine: Machine): Machine = {
+    return Machine(
+      machine.a,
+      machine.b,
+      Location(
+        machine.prize.x + 10000000000000L,
+        machine.prize.y + 10000000000000L
+      )
+    )
   }
 
   def parseMachine(machine: String): Machine = {
@@ -64,11 +99,11 @@ case class Machine(
 )
 
 case class Location(
-    x: Int,
-    y: Int
+    x: Long,
+    y: Long
 )
 
 case class Button(
-    x: Int,
-    y: Int
+    x: Long,
+    y: Long
 )
