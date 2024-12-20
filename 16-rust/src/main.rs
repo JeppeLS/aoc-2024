@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{BinaryHeap, HashMap, HashSet, VecDeque},
     fs,
 };
 
@@ -11,16 +11,23 @@ enum Direction {
     Left,
 }
 
+#[derive(Clone, Eq, PartialEq)]
 struct Path {
     position: Position,
+    visited: HashSet<Cell>,
     cost: usize,
 }
 
 #[derive(Eq, Hash, PartialEq, Clone)]
 struct Position {
+    cell: Cell,
+    direction: Direction,
+}
+
+#[derive(Eq, Hash, PartialEq, Clone)]
+struct Cell {
     row: usize,
     col: usize,
-    direction: Direction,
 }
 
 enum Field {
@@ -30,8 +37,25 @@ enum Field {
     Start,
 }
 
+impl Ord for Path {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.cost.cmp(&self.cost)
+    }
+}
+
+impl PartialOrd for Path {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+struct Solution {
+    part_one: usize,
+    part_two: usize,
+}
+
 fn main() {
-    let input = fs::read_to_string("test_input.txt").expect("Input file not found");
+    let input = fs::read_to_string("input.txt").expect("Input file not found");
 
     let map: Vec<Vec<Field>> = input
         .split("\n")
@@ -52,19 +76,26 @@ fn main() {
 
     let result = find_cheapest_path(&map, start);
 
-    println!("Result: {}", result);
+    println!("Part one: {}", result.part_one);
+    println!("Part two: {}", result.part_two);
 }
 
 fn find_start(map: &Vec<Vec<Field>>) -> Path {
     for (i, row) in map.iter().enumerate() {
         for (j, field) in row.iter().enumerate() {
             if let Field::Start = field {
+                let cell = Cell { row: i, col: j };
                 let position = Position {
-                    row: i,
-                    col: j,
+                    cell: cell.clone(),
                     direction: Direction::Right,
                 };
-                return Path { position, cost: 0 };
+                let mut visited = HashSet::new();
+                visited.insert(cell);
+                return Path {
+                    position,
+                    cost: 0,
+                    visited,
+                };
             }
         }
     }
@@ -72,40 +103,57 @@ fn find_start(map: &Vec<Vec<Field>>) -> Path {
     panic!("No start found");
 }
 
-fn find_cheapest_path(map: &Vec<Vec<Field>>, start: Path) -> usize {
-    let mut memory: HashMap<Position, usize> = HashMap::new();
+fn find_cheapest_path(map: &Vec<Vec<Field>>, start: Path) -> Solution {
+    let mut memory: HashMap<Position, Path> = HashMap::new();
 
-    let mut paths = VecDeque::new();
+    let mut paths = BinaryHeap::new();
     let mut best = usize::MAX;
-    paths.push_back(start);
-    loop {
-        match paths.pop_back() {
-            Some(path) => {
-                if path.cost > best {
+    let mut visited = HashSet::new();
+    paths.push(start);
+    while let Some(path) = paths.pop() {
+        if path.cost > best {
+            continue;
+        }
+        let possible_decisions = get_possible_decisions(&path, &map);
+        for mut decision in possible_decisions {
+            let position = decision.position.clone();
+            let row = position.cell.row;
+            let col = position.cell.col;
+            let cost = decision.cost;
+            if let Some(old) = memory.get(&position) {
+                if decision.cost > old.cost {
                     continue;
                 }
-                let possible_decisions = get_possible_decisions(&path, &map);
-                for decision in possible_decisions {
-                    let position = decision.position.clone();
-                    let row = position.row;
-                    let col = position.col;
-                    let cost = decision.cost;
-                    if decision.cost < *memory.get(&position).unwrap_or(&usize::MAX) {
-                        memory.insert(position, decision.cost);
-                        paths.push_front(decision);
-                    }
 
-                    if let Field::End = map[row][col] {
-                        if cost < best {
-                            best = cost;
-                        }
-                    }
+                old.visited.iter().for_each(|cell| {
+                    decision.visited.insert(cell.clone());
+                });
+            }
+
+            memory.insert(position, decision.clone());
+            paths.push(decision.clone());
+
+            if let Field::End = map[row][col] {
+                if cost < best {
+                    println!("New best: {}", cost);
+                    best = cost;
+                    visited.clear();
+                    decision.visited.iter().for_each(|cell| {
+                        visited.insert(cell.clone());
+                    });
+                } else if cost == best {
+                    println!("Equal best: {}", cost);
+                    decision.visited.iter().for_each(|cell| {
+                        visited.insert(cell.clone());
+                    });
                 }
             }
-            None => break,
         }
     }
-    best
+    Solution {
+        part_one: best,
+        part_two: visited.len(),
+    }
 }
 
 fn get_possible_decisions(path: &Path, map: &Vec<Vec<Field>>) -> Vec<Path> {
@@ -125,11 +173,12 @@ fn get_possible_decisions(path: &Path, map: &Vec<Vec<Field>>) -> Vec<Path> {
 
 fn get_next_path(path: &Path, decision: Direction, map: &Vec<Vec<Field>>) -> Option<Path> {
     let position = &path.position;
+    let cell = &position.cell;
     let row: usize = match decision {
-        Direction::Up => (position.row as i32 - 1).try_into().ok(),
-        Direction::Right => Some(position.row),
-        Direction::Down => Some(position.row + 1),
-        Direction::Left => Some(position.row),
+        Direction::Up => (cell.row as i32 - 1).try_into().ok(),
+        Direction::Right => Some(cell.row),
+        Direction::Down => Some(cell.row + 1),
+        Direction::Left => Some(cell.row),
     }?;
 
     if row >= map.len() {
@@ -137,10 +186,10 @@ fn get_next_path(path: &Path, decision: Direction, map: &Vec<Vec<Field>>) -> Opt
     }
 
     let col: usize = match decision {
-        Direction::Up => Some(position.col),
-        Direction::Right => Some(position.col + 1),
-        Direction::Down => Some(position.col),
-        Direction::Left => (position.col as i32 - 1).try_into().ok(),
+        Direction::Up => Some(cell.col),
+        Direction::Right => Some(cell.col + 1),
+        Direction::Down => Some(cell.col),
+        Direction::Left => (cell.col as i32 - 1).try_into().ok(),
     }?;
     if col >= map[0].len() {
         return None;
@@ -150,14 +199,18 @@ fn get_next_path(path: &Path, decision: Direction, map: &Vec<Vec<Field>>) -> Opt
 
     match field {
         Field::Empty | Field::End => {
+            let next_cell = Cell { row, col };
             let next_position = Position {
-                row,
-                col,
+                cell: next_cell.clone(),
                 direction: decision,
             };
+            let mut visited = path.visited.clone();
+            visited.insert(next_cell);
+
             Some(Path {
                 position: next_position,
                 cost: path.cost + 1 + 1000 * spins(position.direction, decision),
+                visited,
             })
         }
         _ => None,
