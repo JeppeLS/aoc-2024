@@ -63,3 +63,15 @@ path = a_star(bytes_map, (0, 0), (70, 70))
 assert path is not None, "Path not found"
 
 print(len(path))
+
+## Part 2
+
+current_path = set(path)
+for x, y in falling_bytes[1024:]:
+    bytes_map[y][x] = True
+    if (x, y) in current_path:
+        path = a_star(bytes_map, (0, 0), (70, 70))
+        if path is None:
+            print((x, y))
+            break
+        current_path = set(path)
